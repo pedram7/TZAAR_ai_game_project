@@ -2,6 +2,7 @@ package models;
 
 import static models.Board.isTherePath;
 
+
 public class Game {
 
     private final Player white;

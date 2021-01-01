@@ -2,22 +2,116 @@ import models.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.Random;
+import java.util.stream.Collectors;
 
-public class Ai extends Player {
+public class AlphaBetaAi extends Player {
 
-    private int doneActions = 0;
     private final int maxDepth;
+    private int doneActions = 0;
 
-    public Ai(PlayerType type , int maxDepth) {
+    private static int alpha = Integer.MIN_VALUE;
+    private static int beta = Integer.MAX_VALUE;
+
+    public AlphaBetaAi(PlayerType type, int maxDepth) {
         super(type);
         this.maxDepth = maxDepth;
     }
 
+    private int[] myStrengthBeads(Game game) {
+        int[] beads = {0, 0, 0, 0, 0}; //A,B,C,Sum,Min
+        Board board = game.getBoard();
+        for (Board.BoardRow row : board.getRows()) {
+            for (Board.BoardCell cell : row.boardCells) {
+                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == this.getType()) {
+                    beads[cell.bead.getType().ordinal()] += 1;
+                    beads[3] += cell.bead.getHeight();
+                }
+            }
+        }
+        beads[4] = Math.min(Math.min(beads[0], beads[1]), beads[2]);
+        return beads;
+    }
+
+    private int[] opponentStrengthBeads(Game game) {
+        int[] beads = {0, 0, 0, 0, Integer.MAX_VALUE}; //A,B,C,Sum,Min
+        Board board = game.getBoard();
+        for (Board.BoardRow row : board.getRows()) {
+            for (Board.BoardCell cell : row.boardCells) {
+                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == this.getType().reverse()) {
+                    beads[cell.bead.getType().ordinal()] += 1;
+                    beads[3] += cell.bead.getHeight();
+                }
+            }
+        }
+        beads[4] = Math.min(Math.min(beads[0], beads[1]), beads[2]);
+        return beads;
+    }
+
+    private int myAttackActionsCount(Game game) {
+        List<Action> attacks = this.getAllAttacks(game.getBoard());
+        return attacks.size();
+    }
+
+    private int oponnentAttackActionsCount(Game game) {
+        List<Action> attacks = this.getAllOponnentAttacks(game.getBoard());
+        return attacks.size();
+    }
+
+
+    private int eval(Game game) {
+        int ans = 0;
+
+        int[] myStrength = myStrengthBeads(game);
+        int[] opStrength = opponentStrengthBeads(game);
+
+        //strength 2
+        ans += (myStrength[3] - opStrength[3]) * 40;
+
+        //variety 5
+        int var_score = 0;
+        for (int i = 0; i < 3; i++) {
+            var_score += myStrength[i] * 100;
+            var_score -= opStrength[i] * 100;
+        }
+        ans += var_score;
+        if (myStrength[4] == 0)
+            return Integer.MIN_VALUE;
+        else if (opStrength[4] == 0) {
+            return Integer.MAX_VALUE;
+        }else if (myStrength[4] == 1) {
+            var_score-=100;
+        }else if (opStrength[4] == 1) {
+            var_score +=100;
+        }
+
+
+
+        //possible actions 3
+        var a1 = myAttackActionsCount(game);
+        var a2 = oponnentAttackActionsCount(game);
+        int x = (a1-a2) * 60;
+        if (a1==0)
+            return Integer.MIN_VALUE;
+        if(a2==0)
+            return Integer.MAX_VALUE;
+        if(a1==1)
+            ans-=60;
+        if(a2==1)
+            ans+=60;
+
+        ans += x;
+
+        return ans;
+    }
+
+
     @Override
     public Action forceAttack(Game game) {
         int maxValue = Integer.MIN_VALUE;
+        alpha = Integer.MIN_VALUE;
+        beta = Integer.MAX_VALUE;
+
         Action bestAction = null;
         ArrayList<Action> actions = getAllActions(game.getBoard());
         if (doneActions == 0 && getType() == PlayerType.white) {
@@ -67,78 +161,13 @@ public class Ai extends Player {
         return bestAction;
     }
 
-    private int[] myStrengthBeads(Game game) {
-        int[] beads = {0, 0, 0, 0, 0}; //A,B,C,Sum,Min
-        Board board = game.getBoard();
-        for (Board.BoardRow row : board.getRows()) {
-            for (Board.BoardCell cell : row.boardCells) {
-                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == this.getType()) {
-                    beads[cell.bead.getType().ordinal()] += 1;
-                    beads[3] += cell.bead.getHeight();
-                }
-            }
-        }
-        beads[4] = Math.min(Math.min(beads[0], beads[1]), beads[2]);
-        return beads;
-    }
-
-    private int[] opponentStrengthBeads(Game game) {
-        int[] beads = {0, 0, 0, 0, Integer.MAX_VALUE}; //A,B,C,Sum,Min
-        Board board = game.getBoard();
-        for (Board.BoardRow row : board.getRows()) {
-            for (Board.BoardCell cell : row.boardCells) {
-                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == this.getType().reverse()) {
-                    beads[cell.bead.getType().ordinal()] += 1;
-                    beads[3] += cell.bead.getHeight();
-                }
-            }
-        }
-        beads[4] = Math.min(Math.min(beads[0], beads[1]), beads[2]);
-        return beads;
-    }
-
-    private int myAttackActionsCount(Game game) {
-        List<Action> attacks = this.getAllAttacks(game.getBoard());
-        return attacks.size();
-    }
-
-    private int oponnentAttackActionsCount(Game game) {
-        List<Action> attacks = this.getAllOponnentAttacks(game.getBoard());
-        return attacks.size();
-    }
-
-    private int eval(Game game) {
-        int ans = 0;
-
-        int[] myStrength = myStrengthBeads(game);
-        int[] opStrength = opponentStrengthBeads(game);
-        if (myStrength[4] == 0)
-            return Integer.MIN_VALUE;
-        else if (opStrength[4] == 0) {
-            return Integer.MAX_VALUE;
-        }
-
-        //strength 2
-        ans += (myStrength[3] - opStrength[3]) * 40;
-
-        //variety 5
-        int var_score = 0;
-        for (int i = 0; i < 3; i++) {
-            var_score += myStrength[i] * 100;
-            var_score -= opStrength[i] * 100;
-        }
-
-        //possible actions 3
-        int x = (myAttackActionsCount(game) - oponnentAttackActionsCount(game)) * 60;
-
-
-        return 0;
-    }
-
 
     @Override
     public Action secondAction(Game game) {
         int maxValue = Integer.MIN_VALUE;
+        alpha = Integer.MIN_VALUE;
+        beta = Integer.MAX_VALUE;
+
         Action bestAction = null;
         ArrayList<Action> actions = getAllActions(game.getBoard());
         for (Action action : actions) {
@@ -186,6 +215,10 @@ public class Ai extends Player {
                     }
                 } else {
                     maxValue = Math.max(maxValue, maxSecondMove(copyGame, depth + 1));
+                    alpha = Math.min(alpha, maxValue);
+                }
+                if (beta <= alpha) {
+                    return alpha;
                 }
             }
         }
@@ -212,15 +245,21 @@ public class Ai extends Player {
                 }
             } else {
                 maxValue = Math.max(maxValue, minForceAttack(copyGame, depth + 1));
+                alpha = Math.min(alpha, maxValue);
+            }
+            if (beta <= alpha) {
+                return alpha;
             }
         }
         return maxValue;
     }
 
     private int minForceAttack(Game game, int depth) {
+
         if (depth == maxDepth) {
             return eval(game);
         }
+
         Player opp = getOpp(game);
         int minValue = Integer.MAX_VALUE;
         ArrayList<Action> actions = opp.getAllActions(game.getBoard());
@@ -237,14 +276,18 @@ public class Ai extends Player {
                     }
                 } else {
                     minValue = Math.min(minValue, minSecondMove(copyGame, depth + 1));
+                    beta = Math.max(beta, minValue);
                 }
+            }
+            if (beta <= alpha) {
+                return beta;
             }
         }
         return minValue;
-
     }
 
     private int minSecondMove(Game game, int depth) {
+
         if (depth == maxDepth) {
             return eval(game);
         }
@@ -266,9 +309,12 @@ public class Ai extends Player {
                 }
             } else {
                 minValue = Math.min(minValue, maxForceAttack(copyGame, depth + 1));
+                beta = Math.max(beta, minValue);
+            }
+            if (beta <= alpha) {
+                return beta;
             }
         }
-
         return minValue;
     }
 
@@ -279,5 +325,6 @@ public class Ai extends Player {
             return game.getWhite();
         }
     }
+
 
 }

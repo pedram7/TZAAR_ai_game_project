@@ -38,5 +38,46 @@ public abstract class Player {
         return actions;
     }
 
+    public ArrayList<Action> getAllAttacks(Board board) {
+        ArrayList<Action> actions = new ArrayList<>();
+        for (Board.BoardRow row : board.getRows()) {
+            for (Board.BoardCell cell : row.boardCells) {
+                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == type) {
+                    actions.addAll(cell.bead.getAttacks(cell));
+                }
+            }
+        }
+        actions.add(new Action(Action.ActionType.nothing, null, null));
+        return actions;
+    }
+
+
+
+    public ArrayList<Action> getAllOponnentActions(Board board) {
+        ArrayList<Action> actions = new ArrayList<>();
+        for (Board.BoardRow row : board.getRows()) {
+            for (Board.BoardCell cell : row.boardCells) {
+                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == type.reverse()) {
+                    actions.addAll(cell.bead.getActions(cell));
+                }
+            }
+        }
+        actions.add(new Action(Action.ActionType.nothing, null, null));
+        return actions;
+    }
+
+
+    public ArrayList<Action> getAllOponnentAttacks(Board board) {
+        ArrayList<Action> actions = new ArrayList<>();
+        for (Board.BoardRow row : board.getRows()) {
+            for (Board.BoardCell cell : row.boardCells) {
+                if (cell != null && cell.bead != null && cell.bead.getPlayer().getType() == type.reverse()) {
+                    actions.addAll(cell.bead.getAttacks(cell));
+                }
+            }
+        }
+        actions.add(new Action(Action.ActionType.nothing, null, null));
+        return actions;
+    }
 
 }

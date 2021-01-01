@@ -49,10 +49,25 @@ public class Bead {
                         actions.add(new Action(Action.ActionType.attack, cell, temp));
                     }
                 }
-
             }
         }
+        return actions;
+    }
 
+    public ArrayList<Action> getAttacks(Board.BoardCell cell) {
+        ArrayList<Action> actions = new ArrayList<>();
+
+        for (Board.NeighborType type : cell.neighbors.keySet()) {
+            Board.BoardCell temp = cell.neighbors.get(type);
+            while (temp != null && temp.bead == null) {
+                temp = temp.neighbors.get(type);
+            }
+            if (temp != null) {
+                if ((temp.bead.getPlayer().getType() != player.getType()) && temp.bead.getHeight() <= getHeight()) {
+                    actions.add(new Action(Action.ActionType.attack, cell, temp));
+                }
+            }
+        }
         return actions;
     }
 
